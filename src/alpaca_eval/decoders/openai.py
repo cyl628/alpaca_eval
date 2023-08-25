@@ -14,10 +14,22 @@ import tiktoken
 import tqdm
 
 from .. import constants, utils
+import requests
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_random_exponential,
+)
 
 __all__ = ["openai_completions"]
 
 DEFAULT_OPENAI_API_BASE = openai.api_base
+
+DEFAULT_OPENAI_API_BASE = openai.api_base
+
+@retry(wait=wait_random_exponential(min=1, max=60), stop=stop_after_attempt(50))
+def generate_from_gpt4(messages, **kwargs):
+    raise NotImplementedError
 
 
 def openai_completions(
@@ -133,7 +145,11 @@ def openai_completions(
 
     kwargs = dict(n=1, model=model_name, is_chat=is_chat, **decoding_kwargs)
     logging.info(f"Kwargs to completion: {kwargs}")
-
+    # logging.info(f"{kwargs}")
+    # print(prompt_batches[0][0])
+    # exit()
+    # response = generate_from_gpt4(prompt_batches[0])
+    # print(response)
     with utils.Timer() as t:
         if num_procs == 1:
             completions = [_openai_completion_helper(inp, **kwargs) for inp in tqdm.tqdm(inputs, desc="prompt_batches")]
@@ -150,8 +166,8 @@ def openai_completions(
     logging.info(f"Completed {n_examples} examples in {t}.")
 
     # flatten the list and select only the text
+    completions_text = [completion["text"] for completion_batch in completions for completion in completion_batch]
     completions_all = [completion for completion_batch in completions for completion in completion_batch]
-    completions_text = [completion.text for completion in completions_all]
 
     price = [
         completion["total_tokens"] * _get_price_per_token(model_name)
@@ -200,28 +216,38 @@ def _openai_completion_helper(
     while True:
         try:
             if is_chat:
-                completion_batch = openai.ChatCompletion.create(messages=prompt_batch[0], **curr_kwargs)
-
-                choices = completion_batch.choices
+                # completion_batch = openai.ChatCompletion.create(messages=prompt_batch[0], **curr_kwargs)
+                # logging.info(f"current kwargs: {curr_kwargs}")
+                completion_batch = generate_from_gpt4(messages=prompt_batch[0], **curr_kwargs)
+                # logging.info(str(completion_batch))
+                choices = completion_batch["choices"]
                 for choice in choices:
-                    assert choice.message.role == "assistant"
-                    if choice.message.content == "":
+                    assert choice["message"]["role"] == "assistant"
+                    if choice["message"]["content"] == "":
                         choice["text"] = " "  # annoying doesn't allow empty string
                     else:
-                        choice["text"] = choice.message.content
+                        choice["text"] = choice["message"]["content"]
 
-                    if choice.message.get("function_call"):
-                        # currently we only use function calls to get a JSON object => return raw text of json
-                        choice["text"] = choice.message.function_call.arguments
+                    # if choice.message.get("function_call"):
+                    #     # currently we only use function calls to get a JSON object
+                    #     # => overwrite text with the JSON object. In the future, we could
+                    #     # allow actual function calls
+                    #     all_args = json.loads(choice.message.function_call.arguments)
+                    #     assert len(all_args) == 1
+                    #     choice["text"] = all_args[list(all_args.keys())[0]]
 
             else:
-                completion_batch = openai.Completion.create(prompt=prompt_batch, **curr_kwargs)
-                choices = completion_batch.choices
+                # completion_batch = openai.Completion.create(prompt=prompt_batch, **curr_kwargs)
+                completion_batch = generate_from_gpt4(messages=prompt_batch, **curr_kwargs)
+
+                choices = completion_batch["choices"]
 
             for choice in choices:
-                choice["total_tokens"] = completion_batch.usage.total_tokens / len(prompt_batch)
+                choice["total_tokens"] = completion_batch["usage"]["total_tokens"] / len(prompt_batch)
             break
-        except openai.error.OpenAIError as e:
+        except:
+            print(completion_batch)
+            e = completion_batch["error"]
             logging.warning(f"OpenAIError: {e}.")
             if "Please reduce your prompt" in str(e):
                 kwargs["max_tokens"] = int(kwargs["max_tokens"] * 0.8)
@@ -230,6 +256,9 @@ def _openai_completion_helper(
                     logging.exception("Prompt is already longer than max context length. Error:")
                     raise e
             else:
+                if "the response was filtered due to" in str(e).lower():
+                    choices = [{"text": "response is filtered", "total_tokens": 1}]
+                    break
                 if "rate limit" in str(e).lower():
                     logging.warning(f"Hit request rate limit; retrying...")
                 else:

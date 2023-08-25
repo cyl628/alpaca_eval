@@ -128,19 +128,19 @@ def evaluate(
                 model_outputs = model_outputs[:max_instances]
                 reference_outputs = reference_outputs[:max_instances]
 
-            annotator = Annotator(annotators_config=annotators_config, **annotator_kwargs)
-            annotations = annotator.annotate_head2head(
-                outputs_1=reference_outputs, outputs_2=model_outputs, **annotation_kwargs
-            )
+                annotator = Annotator(annotators_config=annotators_config, **annotator_kwargs)
+                annotations = annotator.annotate_head2head(
+                    outputs_1=reference_outputs, outputs_2=model_outputs, **annotation_kwargs
+                )
 
             if isinstance(fn_metric, str):
                 fn_metric = getattr(metrics, fn_metric)
 
-            leaderboard[name] = fn_metric(preferences=[a["preference"] for a in annotations])
-            leaderboard[name]["mode"] = current_leaderboard_mode
-            leaderboard[name]["avg_length"] = int(model_outputs["output"].str.len().mean())
-        else:
-            logging.info(f"Skipping evaluation of {name} as it is already in the precomputed leaderboard.")
+                leaderboard[name] = fn_metric(preferences=[a["preference"] for a in annotations])
+                leaderboard[name]["mode"] = current_leaderboard_mode
+                leaderboard[name]["avg_length"] = int(model_outputs["output"].str.len().mean())
+            else:
+                logging.info(f"Skipping evaluation of {name} as it is already in the precomputed leaderboard.")
 
     output_path = utils.get_output_path(output_path, model_outputs, name)
 
@@ -149,12 +149,14 @@ def evaluate(
         utils.prioritize_elements(list(df_leaderboard.columns), ["win_rate", "standard_error"])
     ]
 
+    print("output_path:", output_path)
     if output_path is not None:
+        import os
         logging.info(f"Saving all results to {output_path}")
-        df_leaderboard.to_csv(output_path / "leaderboard.csv")
+        df_leaderboard.to_csv(os.path.join(output_path, "leaderboard.csv"))
         if annotations is not None:
             utils.convert_to_dataframe(annotations).to_json(
-                output_path / "annotations.json", orient="records", indent=2
+                os.path.join(output_path, "annotations.json"), orient="records", indent=2
             )
 
     if is_cache_leaderboard is None:

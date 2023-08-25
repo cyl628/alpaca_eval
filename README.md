@@ -5,6 +5,39 @@
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/release/python-3100/)
 [![discord](https://img.shields.io/badge/discord-server-blue?logo=discord&logoColor=white)](https://discord.gg/GJMxJSVZZM)
 
+---
+## Usage
+- **Notice: Before you proceed, implement your own GPT4 api in [openai.py](src\alpaca_eval\decoders\openai.py#30)**
+  - To understand what is contained in `kwargs`, here is a demo implementation
+  ```python
+  def generate_from_gpt4(messages, **kwargs):
+    response = requests.post("your_api_endpoint", json={
+        "model": "gpt-4",
+        "messages": messages,
+        "temperature": kwargs["temperature"],
+        "top_p": kwargs["top_p"],
+        "max_tokens": kwargs["max_tokens"],
+        "presence_penalty": 0,
+        "frequency_penalty": 0
+        }).json()
+    return response
+  ```
+  - Correspondingly, you may also need to customize error handling in calling GPT4 api at [line 263](src\alpaca_eval\decoders\openai.py#263) (opttional)
+- generate your model output, format them in a json like below
+```json
+[
+  {
+    "dataset": "helpful_base",
+    "instruction": "What are the names of some famous actors that started their careers on Broadway?",
+    "output": "There are many famous actors...",
+    "generator": "your model name"
+  },
+  ...
+]
+```
+- Run `python setup.py develop`
+- Run GPT4 evaluation, the example evaluation script is in [eval_gpt4.sh](eval_gpt4.sh)
+---
 Evaluation of instruction-following models (e.g., ChatGPT) typically requires human interactions. This is
 time-consuming, expensive, and hard to replicate. AlpacaEval in an LLM-based automatic evaluation that is fast, cheap,
 replicable, and validated against 20K human annotations.
@@ -47,29 +80,23 @@ Details in [limitations](#limitations).
 <details open>
   <summary><b>Table of Contents</b></summary>
 
-1. [Quick Start](#quick-start)
-2. [Leaderboards and how to interpret them](#leaderboards-and-how-to-interpret-them)
-    - [Models](#models)
-    - [Evaluators](#evaluators)
-3. [Use-cases](#use-cases)
-    - [Evaluating a model](#evaluating-a-model)
-    - [Making a new leaderboard](#making-a-new-leaderboard)
-    - [Making a new evaluator](#making-a-new-evaluator)
-4. [Analysis](#additional-analysis-and-plots)
-    - [Analyzing an evaluator](#analyzing-an-evaluator)
-    - [Analyzing an eval set](#analyzing-an-eval-set)
-5. [Contributing](#contributing)
-    - [Contributing a model](#contributing-a-model)
-    - [Contributing an evaluator](#contributing-an-evaluator)
-    - [Contributing an eval set](#contributing-an-eval-set)
-    - [Contributing a completion function](#contributing-a-completion-function)
-6. [Limitations](#limitations)
-7. [Citation](#citation)
-8. [Additional information](#additional-information)
-    - [Data Release](#data-release)
-    - [Differences with AlpacaFarm](#differences-with-alpacafarm)
-    - [Related work](#related-work)
-    - [Major updates](#major-updates)
+- [ AlpacaEval : An Automatic Evaluator for Instruction-following Language Models](#-alpacaeval--an-automatic-evaluator-for-instruction-following-language-models)
+  - [Usage](#usage)
+- [Quick Start](#quick-start)
+- [Leaderboards and how to interpret them](#leaderboards-and-how-to-interpret-them)
+  - [Models](#models)
+  - [Evaluators](#evaluators)
+- [Use-cases](#use-cases)
+  - [Evaluating a model](#evaluating-a-model)
+  - [Making a new leaderboard](#making-a-new-leaderboard)
+  - [Making a new evaluator](#making-a-new-evaluator)
+- [Additional analysis and plots](#additional-analysis-and-plots)
+  - [Analyzing an evaluator](#analyzing-an-evaluator)
+  - [Analyzing an eval set](#analyzing-an-eval-set)
+- [Contributing](#contributing)
+- [Limitations](#limitations)
+- [Citation](#citation)
+- [More information](#more-information)
 
 </details>
 

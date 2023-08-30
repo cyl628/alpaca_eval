@@ -114,12 +114,15 @@ def evaluate(
     leaderboard, precomputed_leaderboard = utils.get_precomputed_leaderboard(
         precomputed_leaderboard, reference_outputs, annotators_config
     )
+    # print("leaderboard:", leaderboard)
     annotations = None
 
     if model_outputs is not None:
         model_outputs = utils.load_or_convert_to_dataframe(model_outputs)
         reference_outputs = utils.load_or_convert_to_dataframe(reference_outputs)
+        # print("name:", name)
         name = utils.get_generator_name(name, model_outputs)
+        # print("name:", name)
 
         if (name not in leaderboard) or is_overwrite_leaderboard:
             logging.info(f"Evaluating the {name} outputs.")
@@ -128,10 +131,10 @@ def evaluate(
                 model_outputs = model_outputs[:max_instances]
                 reference_outputs = reference_outputs[:max_instances]
 
-                annotator = Annotator(annotators_config=annotators_config, **annotator_kwargs)
-                annotations = annotator.annotate_head2head(
-                    outputs_1=reference_outputs, outputs_2=model_outputs, **annotation_kwargs
-                )
+            annotator = Annotator(annotators_config=annotators_config, **annotator_kwargs)
+            annotations = annotator.annotate_head2head(
+                outputs_1=reference_outputs, outputs_2=model_outputs, **annotation_kwargs
+            )
 
             if isinstance(fn_metric, str):
                 fn_metric = getattr(metrics, fn_metric)
